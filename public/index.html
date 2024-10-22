@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seat Reservation System</title>
+  <style>
+    /* Center the entire page */
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+    }
+
+    /* Container for the content */
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Title styling */
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    /* Style the coach grid */
+    .coach {
+      display: grid;
+      grid-template-columns: repeat(7, 40px);
+      gap: 10px;
+      justify-content: center; /* Align grid items in the center */
+      margin-bottom: 20px;
+    }
+
+    .row:last-child {
+      grid-template-columns: repeat(3, 40px);
+    }
+
+    /* Style individual seat boxes */
+    .seat {
+      width: 40px;
+      height: 40px;
+      background-color: lightgreen;
+      text-align: center;
+      line-height: 40px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    /* Style booked seats */
+    .booked {
+      background-color: red;
+    }
+
+    /* Input and button styling */
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      outline: none;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Train Seat Reservation</h1>
+    <div class="coach" id="coach"></div>
+    <input type="number" id="seatsRequested" min="1" max="7" placeholder="Seats (1-7)">
+    <button onclick="reserveSeats()">Reserve</button>
+  </div>
+
+  <script>
+    const totalSeats = 80;
+    let bookedSeats = []; // To be fetched from the backend
+
+    // Generate seat layout
+    function createSeats() {
+      const coach = document.getElementById('coach');
+      coach.innerHTML = ''; // Clear the coach before rendering
+      for (let i = 1; i <= totalSeats; i++) {
+        const seat = document.createElement('div');
+        seat.classList.add('seat');
+        if (bookedSeats.includes(i)) {
+          seat.classList.add('booked');
+        }
+        seat.innerText = i;
+        coach.appendChild(seat);
+      }
+    }
+
+    // Fetch the booked seats from the backend
+    async function fetchSeats() {
+      try {
+        const response = await fetch('/api/seats'); // Relative URL for Vercel backend
+        const data = await response.json();
+        bookedSeats = data.bookedSeats;
+        createSeats(); // Recreate the seat layout after fetching booked seats
+      } catch (error) {
+        console.error('Error fetching seats:', error);
+      }
+    }
+
+    // Reserve seats and make an API call to the backend
+    async function reserveSeats() {
+      const requestedSeats = parseInt(document.getElementById('seatsRequested').value);
+      if (requestedSeats <= 0 || requestedSeats > 7) {
+        alert('Please enter a valid number of seats between 1 and 7.');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/book', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ requestedSeats: Array(requestedSeats).fill(0) })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          // Update booked seats
+          bookedSeats = [...bookedSeats, ...data.bookedSeats];
+          updateSeatDisplay(data.bookedSeats);
+        } else {
+          alert(data.error);
+        }
+      } catch (error) {
+        console.error('Error reserving seats:', error);
+      }
+    }
+
+    // Update seat colors after booking
+    function updateSeatDisplay(selectedSeats) {
+      const coach = document.getElementById('coach').children;
+      selectedSeats.forEach(seat => {
+        coach[seat - 1].classList.add('booked');
+      });
+    }
+
+    // Load the seats when the page is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      createSeats();
+      fetchSeats();
+    });
+  </script>
+</body>
+</html>
